@@ -2,6 +2,7 @@ import json
 import Levenshtein
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from unidecode import unidecode
 
 from src.config import get_settings
 from src.log import get_logger
@@ -129,3 +130,8 @@ async def read_task_data_from_directory(
             else:
                 logger.info(f"{file.name} does not contain suitable data.")
     return data
+
+
+async def process_non_latin_word(city_name: str) -> str:
+    city_name_processed = unidecode(city_name)
+    return city_name_processed

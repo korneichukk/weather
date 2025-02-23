@@ -7,6 +7,7 @@ import regex as re
 
 from src.api.service import (
     find_the_most_similar_cities,
+    process_non_latin_word,
     read_task_data_from_directory,
     save_task_result,
 )
@@ -17,7 +18,6 @@ from src.database.crud import (
     get_task_by_id,
     update_task,
 )
-from src.database.models import Task
 from src.tasks import celery_app, fetch_weather_data_for_cities
 from src.log import get_logger
 
@@ -39,11 +39,24 @@ async def request_weather(cities: List[str]):
     all_cities = [city.to_dict() for city in await get_all_cities()]
 
     async def fetch_city_data(city_name: str) -> Optional[Dict]:
+        if not all(
+            "a" <= city_name_letter.lower() <= "z" for city_name_letter in city_name
+        ):
+            logger.info(f"City: {city_name} has non-latin letters. Converting.")
+            city_name = await process_non_latin_word(city_name)
+            logger.info(f"Was converted into {city_name}")
+
         city_db = await get_city_by_name(city_name)
         if city_db:
             logger.info(f"Found city {city_name} in database.")
             return city_db.to_dict()
-        return await find_the_most_similar_cities(city_name, all_cities)
+
+        city_db = await find_the_most_similar_cities(city_name, all_cities)
+        if city_db:
+            logger.info(
+                f"Found city with similar name to {city_name} - {city_db["city"]}"
+            )
+            return city_db
 
     cities_from_db = []
     for city in cities:

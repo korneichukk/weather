@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     WEATHER_DATA_DIR: Path = PROJECT_ROOT / "weather_data"
 
     OPEN_WEATHER_API_KEY: str = ""
+    WEATHERAPI_API_KEY: str = ""
     SQLITE_DB_NAME: str = "db.sqlite3"
 
     REDIS_BROKER: str = "redis://localhost:6379/0"

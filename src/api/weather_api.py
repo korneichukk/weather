@@ -1,5 +1,6 @@
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
+from enum import Enum
 
 from typing import Dict, List, Optional
 import regex as re
@@ -17,7 +18,11 @@ from src.database.crud import (
     get_task_by_id,
     update_task,
 )
-from src.tasks import celery_app, fetch_weather_data_for_cities
+from src.tasks import (
+    celery_app,
+    fetch_weather_data_for_cities,
+    fetch_weatherapi_data_for_cities,
+)
 from src.log import get_logger
 
 logger = get_logger(__name__)
@@ -25,8 +30,13 @@ logger = get_logger(__name__)
 weather_router = APIRouter(tags=["weather"])
 
 
+class Sources(str, Enum):
+    open_weather = "open_weather"
+    weatherapi = "weather_api"
+
+
 @weather_router.post("/weather")
-async def request_weather(cities: List[str]):
+async def request_weather(cities: List[str], source: Sources):
     # Allow only letters (don't allow numbers and special symbols)
     for city in cities:
         if not re.match(r"^[\p{L} ]+$", city):
@@ -67,7 +77,10 @@ async def request_weather(cities: List[str]):
         logger.info(f"Could not find {city} in database.")
         continue
 
-    task = fetch_weather_data_for_cities.delay(cities_from_db)  # type: ignore
+    if source is Sources.open_weather:
+        task = fetch_weather_data_for_cities.delay(cities_from_db)  # type: ignore
+    elif source is Sources.weatherapi:
+        task = fetch_weatherapi_data_for_cities.delay(cities_from_db)  # type: ignore
     await create_task(task.id, {"status": "running", "results": None})
 
     logger.info(f"TASK ID: {task.id}")
@@ -87,11 +100,17 @@ async def request_task(task_id: str) -> Optional[Dict]:
         return {"status": "complete", **region_path_map}
     elif task.failed():
         await update_task(task_id, {"status": "failed"})
+        return {"status": "failed", "results": None}
+
+    return {"status": "running", "results": None}
 
 
 @weather_router.get("/results/{region}")
-async def request_region_results(region: str) -> Optional[Dict]:
+async def request_region_results(region: str) -> Dict:
     region_data = await read_task_data_from_directory(region)
     if region_data is None:
         logger.info(f"{region} does not exist or is empty.")
+        raise HTTPException(
+            status_code=404, detail=f"{region} was not found or is empty."
+        )
     return region_data

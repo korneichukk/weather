@@ -1,6 +1,6 @@
 from typing import Dict, Union, Any, Optional, Sequence, List
 
-from sqlalchemy import Insert, Result, Select, Update, select, update
+from sqlalchemy import Insert, Result, Select, Update, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.db import AsyncSessionLocal
@@ -117,12 +117,10 @@ async def get_all_cities() -> List[City]:
 
 
 async def create_task(task_id: str, task_data: Dict[str, Any]):
-    new_task = Task(
+    query = insert(Task).values(
         id=task_id, status=task_data["status"], results=task_data["results"]
     )
-    async with AsyncSessionLocal() as session:
-        session.add(new_task)
-        await session.commit()
+    await execute_query(query)
 
 
 async def get_task_by_id(task_id: str) -> Optional[Task]:

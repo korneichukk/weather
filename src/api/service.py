@@ -45,6 +45,39 @@ def process_open_weather_data(data: Dict) -> Dict:
         return response
 
 
+def process_weatherapi_data(data: Dict) -> Dict:
+    response = {}
+
+    try:
+        if "code" in data:
+            response["code"] = data["code"]
+            response["message"] = data.get("message", "Unknown error.")
+            return response
+
+        current_temp = data["current"]["temp_c"]
+        if current_temp <= -50 or current_temp >= 50:
+            response["code"] = 500
+            response["message"] = f"Temperature out of range: {current_temp}°C"
+            return response
+
+        weather_description = ""
+        if "condition" in data["current"]:
+            weather_description = data["current"]["condition"].get("text", "")
+
+        response["temp"] = current_temp
+        response["description"] = weather_description
+
+        return response
+    except KeyError as e:
+        response["code"] = 500
+        response["message"] = f"Missing expected key: {e}"
+        return response
+    except Exception as e:
+        response["code"] = 500
+        response["message"] = str(e)
+        return response
+
+
 async def find_the_most_similar_cities(
     city_name: str, cities: List[Dict[str, Any]]
 ) -> Optional[Dict[str, Any]]:

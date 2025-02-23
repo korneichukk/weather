@@ -2,7 +2,6 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 
 from typing import Dict, List, Optional
-from pathlib import Path
 import regex as re
 
 from src.api.service import (
@@ -73,7 +72,7 @@ async def request_weather(cities: List[str]):
 
     logger.info(f"TASK ID: {task.id}")
 
-    return {"task_id": task.id}
+    return task.id
 
 
 @weather_router.get("/tasks/{task_id}")
@@ -91,7 +90,7 @@ async def request_task(task_id: str) -> Optional[Dict]:
 
 
 @weather_router.get("/results/{region}")
-async def request_region_results(region: str) -> Optional[List]:
+async def request_region_results(region: str) -> Optional[Dict]:
     region_data = await read_task_data_from_directory(region)
     if region_data is None:
         logger.info(f"{region} does not exist or is empty.")

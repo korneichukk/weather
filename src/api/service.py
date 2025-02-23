@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import Levenshtein
 from typing import List, Dict, Any, Optional
@@ -114,8 +115,8 @@ async def save_task_result(task_id: str, task_result: Dict) -> Dict[str, str]:
 
 async def read_task_data_from_directory(
     region_name: str,
-) -> Optional[List[Dict[str, Any]]]:
-    data = []
+) -> Optional[Dict[str, Any]]:
+    data = {}
     files_dir = settings.WEATHER_DATA_DIR / region_name
 
     if not files_dir.exists() or not files_dir.is_dir():
@@ -126,9 +127,15 @@ async def read_task_data_from_directory(
             file_data = json.load(json_file)
 
             if isinstance(file_data, list):
-                data.extend(file_data)
+                for fd in file_data:
+                    if fd["city"] not in data:
+                        data[fd["city"]] = []
+                    data[fd["city"]].append(
+                        {key: value for key, value in fd.items() if key != "city"}
+                    )
             else:
                 logger.info(f"{file.name} does not contain suitable data.")
+
     return data
 
 

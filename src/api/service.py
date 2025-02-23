@@ -1,6 +1,7 @@
 import json
 import Levenshtein
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 from src.config import get_settings
 from src.log import get_logger
@@ -93,6 +94,12 @@ async def save_task_result(task_id: str, task_result: Dict) -> Dict[str, str]:
 
         file_path = region_path / f"task_{task_id}.json"
 
+        current_time = datetime.now()
+        current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        for i in range(len(region_data)):
+            region_data[i]["time"] = current_time_str
+
         with open(file_path, "w") as file:
             json.dump(region_data, file)
 
@@ -102,3 +109,23 @@ async def save_task_result(task_id: str, task_result: Dict) -> Dict[str, str]:
         region_path_map[region] = str(file_path)
 
     return region_path_map
+
+
+async def read_task_data_from_directory(
+    region_name: str,
+) -> Optional[List[Dict[str, Any]]]:
+    data = []
+    files_dir = settings.WEATHER_DATA_DIR / region_name
+
+    if not files_dir.exists() or not files_dir.is_dir():
+        return
+
+    for file in files_dir.glob("*.json"):
+        with open(file, "r") as json_file:
+            file_data = json.load(json_file)
+
+            if isinstance(file_data, list):
+                data.extend(file_data)
+            else:
+                logger.info(f"{file.name} does not contain suitable data.")
+    return data

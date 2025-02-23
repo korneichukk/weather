@@ -5,7 +5,11 @@ from typing import Dict, List, Optional
 from pathlib import Path
 import regex as re
 
-from src.api.service import find_the_most_similar_cities, save_task_result
+from src.api.service import (
+    find_the_most_similar_cities,
+    read_task_data_from_directory,
+    save_task_result,
+)
 from src.database.crud import (
     create_task,
     get_all_cities,
@@ -71,3 +75,11 @@ async def request_task(task_id: str) -> Optional[Dict]:
         return {"status": "complete", **region_path_map}
     elif task.failed():
         await update_task(task_id, {"status": "failed"})
+
+
+@weather_router.get("/results/{region}")
+async def request_region_results(region: str) -> Optional[List]:
+    region_data = await read_task_data_from_directory(region)
+    if region_data is None:
+        logger.info(f"{region} does not exist or is empty.")
+    return region_data

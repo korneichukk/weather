@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 
 from src.config import get_settings
 from src.log import get_logger
-from src.api.service import process_open_weather_data
+from src.api.service import process_open_weather_data, save_task_result
 
 settings = get_settings()
 logger = get_logger(__name__)

@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from pathlib import Path
 import regex as re
 
-from src.api.service import find_the_most_similar_cities
+from src.api.service import find_the_most_similar_cities, save_task_result
 from src.database.crud import (
     create_task,
     get_all_cities,
@@ -67,5 +67,7 @@ async def request_task(task_id: str) -> Optional[Dict]:
         raise HTTPException(status_code=404, detail="Task not found")
     if task.ready():
         await update_task(task_id, {"status": "complete", "results": task.result})
+        region_path_map = await save_task_result(task_id, task.result)
+        return {"status": "complete", **region_path_map}
     elif task.failed():
         await update_task(task_id, {"status": "failed"})

@@ -1,3 +1,4 @@
+import json
 import Levenshtein
 from typing import List, Dict, Any, Optional
 
@@ -45,19 +46,19 @@ async def find_the_most_similar_cities(
     city_name: str, cities: List[Dict[str, Any]]
 ) -> Optional[Dict[str, Any]]:
     """
-    Finds the most similar city name to the provided city_name from a list of city dictionaries.
+        Finds the most similar city name to the provided city_name from a list of city dictionaries.
 
-    Args:
-        city_name (str): The city name to compare against the list.
-        city_dicts (List[Dict[str, Any]]): A list of dictionaries, each containing 'city' and 'city_ascii' keys.
+        Args:
+            city_name (str): The city name to compare against the list.
+            city_dicts (List[Dict[str, Any]]): A list of dictionaries, each containing 'city' and 'city_ascii' keys.
 
-    Returns:
-        Dict[str, Any]: The city that is most similar to the provided city name based on Levenshtein distance.
+        Returns:
+            Dict[str, Any]: The city that is most similar to the provided city name based on Levenshtein distance.
 
-    Example:
-        city_dicts = [{'city': 'New York', 'city_ascii': 'New York', ...}, {'city': 'Los Angeles', 'city_ascii': 'Los Angeles', ...}]
-        similar_city = find_most_similar_city('New York', city_dicts)
-        print(similar_city)  # Output: {'city': 'New York', 'city_ascii': 'New York', ...}
+        Example:
+            city_dicts = [{'city': 'New York', 'city_ascii': 'New York', ...}, {'city': 'Los Angeles', 'city_ascii': 'Los Angeles', ...}]
+            similar_city = find_most_similar_city('New York', city_dicts)
+    print(similar_city)  # Output: {'city': 'New York', 'city_ascii': 'New York', ...}
     """
 
     most_similar_city = None
@@ -80,3 +81,24 @@ async def find_the_most_similar_cities(
             most_similar_city = city_dict
 
     return most_similar_city
+
+
+async def save_task_result(task_id: str, task_result: Dict) -> Dict[str, str]:
+    settings.WEATHER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    region_path_map = {}
+    for region, region_data in task_result.items():
+        region_path = settings.WEATHER_DATA_DIR / region
+        region_path.mkdir(parents=True, exist_ok=True)
+
+        file_path = region_path / f"task_{task_id}.json"
+
+        with open(file_path, "w") as file:
+            json.dump(region_data, file)
+
+        logger.info(
+            f"Data of task: {task_id} for region: {region} were saved into: {file_path}."
+        )
+        region_path_map[region] = str(file_path)
+
+    return region_path_map

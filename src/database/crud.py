@@ -1,10 +1,10 @@
-from typing import Union, Any, Optional, Sequence, List
+from typing import Dict, Union, Any, Optional, Sequence, List
 
-from sqlalchemy import Insert, Result, Select, Update, select
+from sqlalchemy import Insert, Result, Select, Update, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.db import AsyncSessionLocal
-from src.database.models import City
+from src.database.models import City, Task
 
 
 async def execute(
@@ -114,3 +114,27 @@ async def get_city_by_name(city_name: str) -> Optional[City]:
 
 async def get_all_cities() -> List[City]:
     return list(await fetch_all(select(City)))
+
+
+async def create_task(task_id: str, task_data: Dict[str, Any]):
+    new_task = Task(
+        id=task_id, status=task_data["status"], results=task_data["results"]
+    )
+    async with AsyncSessionLocal() as session:
+        session.add(new_task)
+        await session.commit()
+
+
+async def get_task_by_id(task_id: str) -> Optional[Task]:
+    query = select(Task).where(Task.id == task_id)
+    result = await fetch_one(query)
+    return result
+
+
+async def update_task(task_id: str, task_data: Dict[str, Any]):
+    query = (
+        update(Task)
+        .where(Task.id == task_id)
+        .values(status=task_data["status"], results=task_data["results"])
+    )
+    await execute_query(query)

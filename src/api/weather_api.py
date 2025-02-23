@@ -2,18 +2,24 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 
 from typing import Dict, List, Optional
+from pathlib import Path
 import regex as re
 
 from src.api.service import find_the_most_similar_cities
-from src.database.crud import get_all_cities, get_city_by_name
+from src.database.crud import (
+    create_task,
+    get_all_cities,
+    get_city_by_name,
+    get_task_by_id,
+    update_task,
+)
+from src.database.models import Task
 from src.tasks import celery_app, fetch_weather_data_for_cities
 from src.log import get_logger
 
 logger = get_logger(__name__)
 
 weather_router = APIRouter(tags=["weather"])
-
-tasks = {}
 
 
 @weather_router.post("/weather")
@@ -46,10 +52,8 @@ async def request_weather(cities: List[str]):
         continue
 
     task = fetch_weather_data_for_cities.delay(cities_from_db)  # type: ignore
-    tasks[task.id] = {
-        "status": "running",
-        "results": None,
-    }
+    await create_task(task.id, {"status": "running", "results": None})
+
     logger.info(f"TASK ID: {task.id}")
 
     return {"task_id": task.id}
@@ -58,11 +62,10 @@ async def request_weather(cities: List[str]):
 @weather_router.get("/tasks/{task_id}")
 async def request_task(task_id: str) -> Optional[Dict]:
     task = AsyncResult(task_id, app=celery_app)
-    if task_id not in tasks:
+    task_db = await get_task_by_id(task_id)
+    if not task_db:
         raise HTTPException(status_code=404, detail="Task not found")
     if task.ready():
-        tasks[task_id]["status"] = "complete"
-        tasks[task_id]["results"] = task.result
+        await update_task(task_id, {"status": "complete", "results": task.result})
     elif task.failed():
-        tasks[task_id]["status"] = "failed"
-    return tasks[task_id]
+        await update_task(task_id, {"status": "failed"})
